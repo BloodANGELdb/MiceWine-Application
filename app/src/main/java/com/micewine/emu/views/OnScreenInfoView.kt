@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.os.Build
+import android.os.Debug
 import android.util.AttributeSet
 import android.view.View
 import com.micewine.emu.activities.MainActivity.Companion.d3dxRenderer
@@ -16,6 +18,9 @@ import com.micewine.emu.activities.MainActivity.Companion.selectedDXVK
 import com.micewine.emu.activities.MainActivity.Companion.selectedWineD3D
 import com.micewine.emu.activities.MainActivity.Companion.totalCpuUsage
 import com.micewine.emu.activities.MainActivity.Companion.vulkanDriverDeviceName
+import java.io.BufferedReader
+import java.io.FileReader
+import java.io.IOException
 
 class OnScreenInfoView @JvmOverloads constructor (context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0): View(context, attrs, defStyleAttr) {
     private val paint: Paint = Paint().apply {
@@ -36,6 +41,11 @@ class OnScreenInfoView @JvmOverloads constructor (context: Context, attrs: Attri
 
         if (enableDebugInfo) {
             onScreenInfo(canvas)
+        }
+
+        if (enableCpuTemperature()) {
+            val cpuTemperature = getCpuTemperature()
+            drawText("CPU Temp: $cpuTemperature°C", 20F, 120F, canvas)
         }
 
         invalidate()
@@ -65,5 +75,26 @@ class OnScreenInfoView @JvmOverloads constructor (context: Context, attrs: Attri
 
     private fun getTextEndX(canvas: Canvas, string: String): Float {
         return canvas.width - paint.measureText(string) - 20F
+    }
+
+    // Проверка наличия доступа к температуре процессора
+    private fun enableCpuTemperature(): Boolean {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+    }
+
+    // Чтение температуры процессора
+    private fun getCpuTemperature(): String {
+        val thermalFile = "/sys/class/thermal/thermal_zone0/temp"
+        var temperature = "N/A"
+        try {
+            val bufferedReader = BufferedReader(FileReader(thermalFile))
+            temperature = bufferedReader.readLine()
+            bufferedReader.close()
+            // Температура обычно в миллиградусах, поэтому делим на 1000
+            temperature = (temperature.toInt() / 1000).toString()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return temperature
     }
 }
